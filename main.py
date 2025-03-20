@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.INFO)
 # BOt token and dispatcher
 BOT = Bot(token='7473178796:AAEbEg2wkTTzrnLtQbo-U22rUqhndZzGJzs')
 dp = Dispatcher()
-
+CHAT_ID = -1002038329653
 
 class AddWordBList(StatesGroup):
     word = State()
@@ -26,8 +26,64 @@ class AddWordBList(StatesGroup):
 class DelWordBList(StatesGroup):
     word = State()
 
-#class JUSTIFY(StatesGroup):
-#    text = State()
+
+@dp.message(Command("start"))
+async def cmd_start(message: types.Message, bot: BOT):
+    # Отправляем сообщение в личку пользователю
+    await message.answer("Привет! Я отправил сообщение в группу.")
+
+    # Отправляем сообщение в группу
+    await bot.send_message(
+        chat_id=CHAT_ID,
+        text="""Всем привет!
+Я — бот, цель которого следить за соблюдением правил в этой группе.
+
+Правила группы:
+1. Распространение незаконных товаров запрещено.
+2. Реклама без договорённости с администраторами запрещена.
+3. Длительная переписка не по теме группы или попытки увлечь пользователей на сторонние ресурсы запрещены.
+
+Рекомендация:
+1. Обязательно прикрепляйте фото к своему сообщения в противном случае это будет расцениваться как нарушение правил
+
+Желаю приятного опыта использования нашей группой!"""
+    )
+
+@dp.message(Command("tell"))
+async def tell(message: Message, command: CommandObject, bot: BOT):
+    if not command.args:
+        await message.answer("Пожалуйста, напишите сообщение после команды /tell.")
+        return
+
+        # Получаем текст сообщения
+    text_to_send = command.args
+
+    try:
+        # Отправляем сообщение в группу
+        await bot.send_message(
+            chat_id=CHAT_ID,
+            text=text_to_send,
+        )
+        await message.answer("Сообщение успешно отправлено в группу!")
+    except Exception as e:
+        await message.answer(f"Ошибка при отправке сообщения: {e}")
+
+
+@dp.message(Command("Check"))
+async def check(message: Message):
+    await message.answer("Бот запущен")
+
+
+@dp.message(Command("id_group"))
+async def id_group(message: Message, bot: BOT):
+    chat_id = message.chat.id
+    print(f"ID этого чата: {chat_id}")
+    answ = input("Желаете установить значение по умолчанию? (Y or N): ")
+    if answ == "y" or answ == "Y" or answ == "Д" or answ == "д" or answ == "да" or answ == "yes" or answ == "Да" or answ == "Yes":
+        CHAT_ID = chat_id
+        print("Значение установлено!")
+    else:
+        print("Операция отменена!")
 
 @dp.message(Command('add_blacklist'))
 async def add_blacklist(message: Message, state: FSMContext):
@@ -39,10 +95,14 @@ async def add_blacklist(message: Message, state: FSMContext):
     text = message.text.lower()
     con = sqlite3.connect('blacklist.db')
     cursor = con.cursor()
-    cursor.execute("INSERT INTO Words (Word) VALUES (?)", (text,))
+    SearchWord = cursor.execute("SELECT Word FROM Words WHERE Word = ?", (text,)).fetchone()
+    if SearchWord:
+        await message.answer("Данное вами слово уже существует")
+    else:
+        cursor.execute("INSERT INTO Words (Word) VALUES (?)", (text,))
+        await message.reply(f'Слово {message.text} добавлено в черный список')
     con.commit()
     con.close()
-    await message.reply(f'Слово {message.text} добавлено в черный список')
     await state.clear()
 
 @dp.message(Command('del_blacklist'))
@@ -61,24 +121,23 @@ async def del_blacklist(message: Message, state: FSMContext):
     await message.reply(f'Слово {message.text} удалено из черного списка')
     await state.clear()
 
-@dp.message(Command('justify'))
-async def justify_0(message: Message, fsm: FSMContext):
-    print(message.from_user.id)
-
-@dp.message(F.text)
+@dp.message(F.text | F.photo)
 async def check_blacklist(message: Message, bot: BOT):
-    text = message.text.lower().split(' ')
     con = sqlite3.connect('blacklist.db')
     cursor = con.cursor()
-    for i in text:
-        cursor.execute("SELECT Word FROM Words WHERE Word = ?", (i,))
-        data = cursor.fetchall()
-        if data:
-            await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-            await message.answer('Подозрение в нарушении УК РФ')
-            break
-        else:
-            pass
+    if message.photo:
+        if message.caption:
+            text = message.caption.lower().split(" ")
+            for i in text:
+                cursor.execute("SELECT Word FROM Words WHERE Word = ?", (i,))
+                data = cursor.fetchall()
+                if data:
+                    await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+                    break
+                else:
+                    pass
+    else:
+        await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
     con.close()
 
 
