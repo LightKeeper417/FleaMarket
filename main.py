@@ -19,6 +19,7 @@ logging.basicConfig(level=logging.INFO)
 BOT = Bot(token='7473178796:AAEbEg2wkTTzrnLtQbo-U22rUqhndZzGJzs')
 dp = Dispatcher()
 CHAT_ID = -1002038329653
+admins = [2123919405]
 
 class AddWordBList(StatesGroup):
     word = State()
@@ -71,7 +72,17 @@ async def tell(message: Message, command: CommandObject, bot: BOT):
 
 @dp.message(Command("Check"))
 async def check(message: Message):
-    await message.answer("Бот запущен")
+    await message.answer(f"Бот запущен\n{message.from_user.id}")
+
+
+@dp.message(Command("addAdmin"))
+async def addAdmin(message: Message):
+    print(message.from_user.id, "\n", type(message.from_user.id))
+    answ = input("Желаете принять этот id как администратора?")
+    if answ == "y" or answ == "Y" or answ == "Д" or answ == "д" or answ == "да" or answ == "yes" or answ == "Да" or answ == "Yes":
+        admins.append(message.from_user.id)
+    else:
+        pass
 
 
 @dp.message(Command("id_group"))
@@ -125,17 +136,18 @@ async def del_blacklist(message: Message, state: FSMContext):
 async def check_blacklist(message: Message, bot: BOT):
     con = sqlite3.connect('blacklist.db')
     cursor = con.cursor()
-    if message.photo:
-        if message.caption:
-            text = message.caption.lower().split(" ")
-            for i in text:
-                cursor.execute("SELECT Word FROM Words WHERE Word = ?", (i,))
-                data = cursor.fetchall()
-                if data:
-                    await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-                    break
-                else:
-                    pass
+    if message.from_user.id not in admins:
+        if message.photo:
+            if message.caption:
+                text = message.caption.lower().split(" ")
+                for i in text:
+                    cursor.execute("SELECT Word FROM Words WHERE Word = ?", (i,))
+                    data = cursor.fetchall()
+                    if data:
+                        await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+                        break
+                    else:
+                        pass
     else:
         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
     con.close()
