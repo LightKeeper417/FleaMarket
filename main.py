@@ -137,19 +137,26 @@ async def check_blacklist(message: Message, bot: BOT):
     con = sqlite3.connect('blacklist.db')
     cursor = con.cursor()
     if message.from_user.id not in admins:
+        print("Юзер не админ")
         if message.photo:
+            print("Отправлено фото")
             if message.caption:
+                print("Имеется прикрепёный текст: ", message.caption.lower())
                 text = message.caption.lower().split(" ")
                 for i in text:
                     cursor.execute("SELECT Word FROM Words WHERE Word = ?", (i,))
                     data = cursor.fetchall()
                     if data:
+                        print("Совпадение найдено: ", data[0])
                         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
                         break
                     else:
+                        print("Совпадений не найдено")
                         pass
+        else:
+            await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
     else:
-        await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+        print("юзер админ")
     con.close()
 
 
