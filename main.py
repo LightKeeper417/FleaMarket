@@ -143,7 +143,7 @@ async def check_blacklist(message: Message, bot: BOT):
     con = sqlite3.connect('blacklist.db')
     cursor = con.cursor()
     if message.from_user.id not in admins:
-        print(f"\n\n{'':->25}{_date_and_time}{'':->25}\nЮзер не админ")
+        print(f"\n\n{'':->10}{_date_and_time}{'':->10}\nЮзер не админ")
         if message.photo:
             print("\n-> Отправлено фото")
             if message.caption:
