@@ -2,6 +2,8 @@ import asyncio
 import logging
 import sys
 import sqlite3
+import datetime
+from colorama import init, Fore, Back, Style
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, CommandObject
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
@@ -10,6 +12,10 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 from aiogram.methods import DeleteMessage
 
+
+datetime_date = datetime.datetime.now()
+
+_date_and_time = datetime_date.strftime("%d-%m-%Y || %H:%M")
 
 
 # Config logging
@@ -132,31 +138,33 @@ async def del_blacklist(message: Message, state: FSMContext):
     await message.reply(f'Слово {message.text} удалено из черного списка')
     await state.clear()
 
-@dp.message(F.text | F.photo)
+@dp.message()
 async def check_blacklist(message: Message, bot: BOT):
     con = sqlite3.connect('blacklist.db')
     cursor = con.cursor()
     if message.from_user.id not in admins:
-        print("Юзер не админ")
+        print(f"\n\n{'':->25}{_date_and_time}{'':->25}\nЮзер не админ")
         if message.photo:
-            print("Отправлено фото")
+            print("\n-> Отправлено фото")
             if message.caption:
-                print("Имеется прикрепёный текст: ", message.caption.lower())
+                print("---> Имеется прикрепёный текст: ", message.caption.lower())
                 text = message.caption.lower().split(" ")
                 for i in text:
                     cursor.execute("SELECT Word FROM Words WHERE Word = ?", (i,))
                     data = cursor.fetchall()
                     if data:
-                        print("Совпадение найдено: ", data[0])
+                        print(Fore.RED + "Совпадение найдено в цикле: ", Style.RESET_ALL, data[0][0], '\n\n')
                         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
                         break
                     else:
-                        print("Совпадений не найдено")
+                        print(Fore.GREEN + "Совпадений не найдено в цикле", Style.RESET_ALL, '\n\n')
                         pass
         else:
+            print(Fore.RED + f"Фото не прикреплено\nСообщение автоматически удаляется\nТекст сообщения:", Style.RESET_ALL + message.text,
+                  '\n\n')
             await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
     else:
-        print("юзер админ")
+        print(Fore.GREEN + f"{'':*>3}Получено сообщение от админа!{'':*>3}", Style.RESET_ALL, '\n\n')
     con.close()
 
 
