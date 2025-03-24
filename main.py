@@ -157,7 +157,7 @@ async def check_blacklist(message: Message, bot: BOT):
                         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
                         break
                     else:
-                        print(Fore.GREEN + "Совпадений не найдено в цикле", Style.RESET_ALL, '\n\n')
+                        print(Fore.GREEN + f"Совпадений не найдено в цикле: {i}", Style.RESET_ALL, '\n\n')
                         pass
         else:
             print(Fore.RED + f"Фото не прикреплено\nСообщение автоматически удаляется\nТекст сообщения:", Style.RESET_ALL + message.text,
