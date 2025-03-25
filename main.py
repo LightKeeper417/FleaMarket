@@ -13,10 +13,6 @@ from aiogram.fsm.context import FSMContext
 from aiogram.methods import DeleteMessage
 
 
-datetime_date = datetime.datetime.now()
-
-_date_and_time = datetime_date.strftime("%d-%m-%Y || %H:%M")
-
 
 # Config logging
 logging.basicConfig(level=logging.INFO)
@@ -140,6 +136,8 @@ async def del_blacklist(message: Message, state: FSMContext):
 
 @dp.message()
 async def check_blacklist(message: Message, bot: BOT):
+    datetime_date = datetime.datetime.now()
+    _date_and_time = datetime_date.strftime("%d-%m-%Y || %H:%M")
     con = sqlite3.connect('blacklist.db')
     cursor = con.cursor()
     if message.from_user.id not in admins:
