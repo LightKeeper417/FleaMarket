@@ -3,14 +3,15 @@ import logging
 import sys
 import sqlite3
 import datetime
-from colorama import init, Fore, Back, Style
-from aiogram import Bot, Dispatcher, types, F
+
+from aiogram.exceptions import TelegramForbiddenError
+from colorama import Fore, Style
+from aiogram import Bot, Dispatcher, types
 from aiogram.filters import Command, CommandObject
-from aiogram.utils.keyboard import ReplyKeyboardBuilder
-from aiogram.types import ContentType, Message, CallbackQuery, KeyboardButton, InlineKeyboardButton
+from aiogram.types import Message
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
-from aiogram.methods import DeleteMessage
+
 
 
 
@@ -25,6 +26,7 @@ admins = [2123919405]
 
 class AddWordBList(StatesGroup):
     word = State()
+    reason = State()
 
 class DelWordBList(StatesGroup):
     word = State()
@@ -54,22 +56,23 @@ async def cmd_start(message: types.Message, bot: BOT):
 
 @dp.message(Command("tell"))
 async def tell(message: Message, command: CommandObject, bot: BOT):
-    if not command.args:
-        await message.answer("Пожалуйста, напишите сообщение после команды /tell.")
-        return
+    if message.from_user.id:
+        if not command.args:
+            await message.answer("Пожалуйста, напишите сообщение после команды /tell.")
+            return
 
-        # Получаем текст сообщения
-    text_to_send = command.args
+            # Получаем текст сообщения
+        text_to_send = command.args
 
-    try:
-        # Отправляем сообщение в группу
-        await bot.send_message(
-            chat_id=CHAT_ID,
-            text=text_to_send,
-        )
-        await message.answer("Сообщение успешно отправлено в группу!")
-    except Exception as e:
-        await message.answer(f"Ошибка при отправке сообщения: {e}")
+        try:
+            # Отправляем сообщение в группу
+            await bot.send_message(
+                chat_id=CHAT_ID,
+                text=text_to_send,
+            )
+            await message.answer("Сообщение успешно отправлено в группу!")
+        except Exception as e:
+            await message.answer(f"Ошибка при отправке сообщения: {e}")
 
 
 @dp.message(Command("Check"))
@@ -79,49 +82,72 @@ async def check(message: Message):
 
 @dp.message(Command("addAdmin"))
 async def addAdmin(message: Message):
-    print(message.from_user.id, "\n", type(message.from_user.id))
-    answ = input("Желаете принять этот id как администратора?")
-    if answ == "y" or answ == "Y" or answ == "Д" or answ == "д" or answ == "да" or answ == "yes" or answ == "Да" or answ == "Yes":
-        admins.append(message.from_user.id)
-    else:
-        pass
+    if message.from_user.id:
+        print(message.from_user.id, "\n", type(message.from_user.id))
+        answ = input("Желаете принять этот id как администратора?")
+        if answ == "y" or answ == "Y" or answ == "Д" or answ == "д" or answ == "да" or answ == "yes" or answ == "Да" or answ == "Yes":
+            admins.append(message.from_user.id)
+        else:
+            pass
 
 
 @dp.message(Command("id_group"))
 async def id_group(message: Message, bot: BOT):
-    chat_id = message.chat.id
-    print(f"ID этого чата: {chat_id}")
-    answ = input("Желаете установить значение по умолчанию? (Y or N): ")
-    if answ == "y" or answ == "Y" or answ == "Д" or answ == "д" or answ == "да" or answ == "yes" or answ == "Да" or answ == "Yes":
-        CHAT_ID = chat_id
-        print("Значение установлено!")
-    else:
-        print("Операция отменена!")
+    if message.from_user.id:
+        chat_id = message.chat.id
+        print(f"ID этого чата: {chat_id}")
+        answ = input("Желаете установить значение по умолчанию? (Y or N): ")
+        if answ == "y" or answ == "Y" or answ == "Д" or answ == "д" or answ == "да" or answ == "yes" or answ == "Да" or answ == "Yes":
+            CHAT_ID = chat_id
+            print("Значение установлено!")
+        else:
+            print("Операция отменена!")
 
 @dp.message(Command('add_blacklist'))
 async def add_blacklist(message: Message, state: FSMContext):
-    await state.set_state(AddWordBList.word)
-    await message.reply('Напишите слово которое хотите занести в черный список')
+    if message.from_user.id in admins:
+        await state.set_state(AddWordBList.word)
+        await message.reply('Напишите слово которое хотите занести в черный список')
+    else:
+        await state.clear()
+        print(Fore.RED + f"{'':!>3}{'':->3} Попытка использования прав админа {'':->3}{'':!>3}", Style.RESET_ALL)
+
+
 
 @dp.message(AddWordBList.word)
 async def add_blacklist(message: Message, state: FSMContext):
     text = message.text.lower()
+    await state.update_data(word=text)
     con = sqlite3.connect('blacklist.db')
     cursor = con.cursor()
     SearchWord = cursor.execute("SELECT Word FROM Words WHERE Word = ?", (text,)).fetchone()
     if SearchWord:
         await message.answer("Данное вами слово уже существует")
     else:
-        cursor.execute("INSERT INTO Words (Word) VALUES (?)", (text,))
-        await message.reply(f'Слово {message.text} добавлено в черный список')
+        await message.answer("Теперь введите причину запрета этого слова")
+        await state.set_state(AddWordBList.reason)
+
+@dp.message(AddWordBList.reason)
+async def add_blacklist_two(message: Message, state: FSMContext):
+    data = await state.get_data()
+    reason = message.text
+    con = sqlite3.connect('blacklist.db')
+    cursor = con.cursor()
+    cursor.execute("INSERT INTO Words (Word, reason) VALUES (?, ?)", (data.get("word"), reason))
+    await message.reply(f'Слово {data["word"]} добавлено в черный список с причиной {reason}')
+    print(f"{'':->10}\nСлово {data["word"]} добавлено в черный список с причиной {reason}")
     con.commit()
     con.close()
     await state.clear()
 
 @dp.message(Command('del_blacklist'))
 async def del_blacklist(message: Message, state: FSMContext):
-    await state.set_state(DelWordBList.word)
-    await message.reply('Напишите слово которое хотите удалить из черного списка')
+    if message.from_user.id in admins:
+        await state.set_state(DelWordBList.word)
+        await message.reply('Напишите слово которое хотите удалить из черного списка')
+    else:
+        await state.clear()
+        print(Fore.RED + f"{'':!>3}{'':->3} Попытка использования прав админа {'':->3}{'':!>3}", Style.RESET_ALL)
 
 @dp.message(DelWordBList.word)
 async def del_blacklist(message: Message, state: FSMContext):
@@ -129,6 +155,7 @@ async def del_blacklist(message: Message, state: FSMContext):
     con = sqlite3.connect('blacklist.db')
     cursor = con.cursor()
     cursor.execute("DELETE FROM Words WHERE Word = ?", (text,))
+    cursor.execute("DELETE FROM reason WHERE Word = ?", (text,))
     con.commit()
     con.close()
     await message.reply(f'Слово {message.text} удалено из черного списка')
@@ -153,14 +180,26 @@ async def check_blacklist(message: Message, bot: BOT):
                     if data:
                         print(Fore.RED + "Совпадение найдено в цикле: ", Style.RESET_ALL, data[0][0], '\n\n')
                         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+                        reason = cursor.execute("SELECT Word, reason FROM Words WHERE Word = ?", (i,)).fetchone()
+                        await bot.send_message(
+                            chat_id=message.from_user.id,
+                            text="В вашем сообщение было обнаружено нарушение правил группы\nЗафиксированное нарушение:\n" + reason[0],
+                        )
                         break
-                    else:
-                        print(Fore.GREEN + f"Совпадений не найдено в цикле: {i}", Style.RESET_ALL, '\n\n')
-                        pass
+                    print(Fore.GREEN + f"Совпадений не найдено в цикле: {i}", Style.RESET_ALL, '\n\n')
+                    pass
         else:
             print(Fore.RED + f"Фото не прикреплено\nСообщение автоматически удаляется\nТекст сообщения:", Style.RESET_ALL + message.text,
                   '\n\n')
             await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
+            try:
+                await bot.send_message(
+                    chat_id=message.from_user.id,
+                    text="Ваше сообщение было удалено по причине отсутствия прикреплённого фото!",
+                )
+                print("Сообщение юзеру отправлено")
+            except TelegramForbiddenError:
+                print()
     else:
         print(Fore.GREEN + f"{'':*>3}Получено сообщение от админа!{'':*>3}", Style.RESET_ALL, '\n\n')
     con.close()
@@ -168,8 +207,12 @@ async def check_blacklist(message: Message, bot: BOT):
 
 
 async def main():
+    datetime_date = datetime.datetime.now()
+    _date_and_time = datetime_date.strftime("%d-%m-%Y || %H:%M")
+    print(Fore.GREEN + f"{'':->6}Бот запущен в {_date_and_time}{'':->6}", Style.RESET_ALL, '\n')
     await dp.start_polling(BOT)
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.ERROR, stream=sys.stdout)
+    #logging.basicConfig(level=logging.WARNING, stream=sys.stdout)
+    logging.getLogger("aiogram").setLevel(logging.WARNING)  # или logging.ERROR
     asyncio.run(main())
