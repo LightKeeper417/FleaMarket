@@ -3,7 +3,8 @@ import logging
 import sys
 import sqlite3
 import datetime
-
+import os
+from dotenv import load_dotenv
 from aiogram.exceptions import TelegramForbiddenError
 from colorama import Fore, Style
 from aiogram import Bot, Dispatcher, types
@@ -13,13 +14,15 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 
 
+load_dotenv()
 
+NON_Photo = "Сообщение удалено по причине отсутствия фото"
 
 # Config logging
 logging.basicConfig(level=logging.INFO)
 
 # BOt token and dispatcher
-BOT = Bot(token='7473178796:AAEbEg2wkTTzrnLtQbo-U22rUqhndZzGJzs')
+bot = Bot(token=os.getenv("TOKEN"))
 dp = Dispatcher()
 CHAT_ID = -1002038329653
 admins = [2123919405]
@@ -33,7 +36,7 @@ class DelWordBList(StatesGroup):
 
 
 @dp.message(Command("start"))
-async def cmd_start(message: types.Message, bot: BOT):
+async def cmd_start(message: types.Message):
     if message.from_user.id in admins:
         await message.answer("Привет! Я отправил сообщение в группу.")
         await bot.send_message(
@@ -55,7 +58,7 @@ async def cmd_start(message: types.Message, bot: BOT):
         await message.answer("Привет\nЯ бот для созданный для контроля сообщений в группе https://t.me/vapefleaNN\nК сожаления у меня нет никакого функционала для обычных пользователей\nПриношу свои извенения")
 
 @dp.message(Command("tell"))
-async def tell(message: Message, command: CommandObject, bot: BOT):
+async def tell(message: Message, command: CommandObject):
     if message.from_user.id:
         if not command.args:
             await message.answer("Пожалуйста, напишите сообщение после команды /tell.")
@@ -92,7 +95,7 @@ async def addAdmin(message: Message):
 
 
 @dp.message(Command("id_group"))
-async def id_group(message: Message, bot: BOT):
+async def id_group(message: Message):
     if message.from_user.id:
         chat_id = message.chat.id
         print(f"ID этого чата: {chat_id}")
@@ -162,7 +165,7 @@ async def del_blacklist(message: Message, state: FSMContext):
     await state.clear()
 
 @dp.message()
-async def check_blacklist(message: Message, bot: BOT):
+async def check_blacklist(message: Message):
     datetime_date = datetime.datetime.now()
     _date_and_time = datetime_date.strftime("%d-%m-%Y || %H:%M")
     con = sqlite3.connect('blacklist.db')
@@ -186,20 +189,20 @@ async def check_blacklist(message: Message, bot: BOT):
                             text="В вашем сообщение было обнаружено нарушение правил группы\nЗафиксированное нарушение:\n" + reason[0],
                         )
                         break
-                    print(Fore.GREEN + f"Совпадений не найдено в цикле: {i}", Style.RESET_ALL, '\n\n')
+                else:
+                    print(Fore.GREEN + f"Совпадений не найдено в цикле!", Style.RESET_ALL, '\n\n')
                     pass
         else:
-            print(Fore.RED + f"Фото не прикреплено\nСообщение автоматически удаляется\nТекст сообщения:", Style.RESET_ALL + message.text,
-                  '\n\n')
+            print(Fore.RED + f"Фото не прикреплено\nСообщение автоматически удаляется\nТекст сообщения:", Style.RESET_ALL + message.text)
             await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
             try:
                 await bot.send_message(
                     chat_id=message.from_user.id,
                     text="Ваше сообщение было удалено по причине отсутствия прикреплённого фото!",
                 )
-                print("Сообщение юзеру отправлено")
+                print("---> Сообщение юзеру отправлено")
             except TelegramForbiddenError:
-                print()
+                print("---> Сообщение не было отправленно")
     else:
         print(Fore.GREEN + f"{'':*>3}Получено сообщение от админа!{'':*>3}", Style.RESET_ALL, '\n\n')
     con.close()
@@ -210,9 +213,8 @@ async def main():
     datetime_date = datetime.datetime.now()
     _date_and_time = datetime_date.strftime("%d-%m-%Y || %H:%M")
     print(Fore.GREEN + f"{'':->6}Бот запущен в {_date_and_time}{'':->6}", Style.RESET_ALL, '\n')
-    await dp.start_polling(BOT)
+    await dp.start_polling(bot)
 
 if __name__ == "__main__":
-    #logging.basicConfig(level=logging.WARNING, stream=sys.stdout)
     logging.getLogger("aiogram").setLevel(logging.WARNING)  # или logging.ERROR
     asyncio.run(main())
