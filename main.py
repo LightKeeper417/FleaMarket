@@ -4,7 +4,7 @@ import sys
 import sqlite3
 import datetime
 import os
-from dotenv import load_dotenv
+from dotenv import load_dotenv, set_key
 from aiogram.exceptions import TelegramForbiddenError
 from colorama import Fore, Style
 from aiogram import Bot, Dispatcher, types
@@ -13,15 +13,20 @@ from aiogram.types import Message
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 
-
-load_dotenv()
-
-NON_Photo = "Сообщение удалено по причине отсутствия фото"
-
 # Config logging
 logging.basicConfig(level=logging.INFO)
 
+load_dotenv()
+
+# Если TOKEN не существует, записываем его
+if not os.getenv("TOKEN"):
+    print("Для запуска вставьте токен:")
+    token = input(">> ")
+    set_key('.env', 'TOKEN', token)
+    logging.info("Токен был записан в .env файл\nДалее будет перезагрузка")
+
 # BOt token and dispatcher
+print(os.getenv("TOKEN"))
 bot = Bot(token=os.getenv("TOKEN"))
 dp = Dispatcher()
 CHAT_ID = -1002038329653
