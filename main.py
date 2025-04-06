@@ -188,12 +188,16 @@ async def check_blacklist(message: Message):
                     if data:
                         print(Fore.RED + "Совпадение найдено в цикле: ", Style.RESET_ALL, data[0][0], '\n\n')
                         await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
-                        reason = cursor.execute("SELECT Word, reason FROM Words WHERE Word = ?", (i,)).fetchone()
-                        await bot.send_message(
-                            chat_id=message.from_user.id,
-                            text="В вашем сообщение было обнаружено нарушение правил группы\nЗафиксированное нарушение:\n" + reason[0],
-                        )
-                        break
+                        reason = cursor.execute("SELECT reason FROM Words WHERE Word = ?", (i,)).fetchone()
+                        try:
+                            await bot.send_message(
+                                chat_id=message.from_user.id,
+                                text="В вашем сообщение было обнаружено нарушение правил группы\nЗафиксированное нарушение:\n" +
+                                     reason[0],
+                            )
+                            print("---> Сообщение юзеру отправлено")
+                        except TelegramForbiddenError:
+                            print("---> Сообщение не было отправленно")
                 else:
                     print(Fore.GREEN + f"Совпадений не найдено в цикле!", Style.RESET_ALL, '\n\n')
                     pass
