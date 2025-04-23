@@ -3,6 +3,10 @@ import logging
 import sys
 import sqlite3
 import datetime
+import os
+import time
+
+from dotenv import load_dotenv, set_key
 
 from aiogram.exceptions import TelegramForbiddenError
 from colorama import Fore, Style
@@ -13,13 +17,22 @@ from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 
 
-
-
 # Config logging
 logging.basicConfig(level=logging.INFO)
 
-# BOt token and dispatcher
-BOT = Bot(token='7473178796:AAEbEg2wkTTzrnLtQbo-U22rUqhndZzGJzs')
+load_dotenv()
+
+# Если TOKEN не существует, записываем его
+if not os.getenv("TOKEN"):
+    print("Для запуска вставьте токен:")
+    token = input(">> ")
+    set_key('.env', 'TOKEN', token)
+    logging.info("Токен был записан в .env файл\nДалее будет перезагрузка")
+
+
+_Bot = Bot(token=os.getenv("TOKEN"))
+
+
 dp = Dispatcher()
 CHAT_ID = -1002038329653
 admins = [2123919405]
@@ -33,7 +46,7 @@ class DelWordBList(StatesGroup):
 
 
 @dp.message(Command("start"))
-async def cmd_start(message: types.Message, bot: BOT):
+async def cmd_start(message: types.Message, bot: _Bot):
     if message.from_user.id in admins:
         await message.answer("Привет! Я отправил сообщение в группу.")
         await bot.send_message(
@@ -55,7 +68,7 @@ async def cmd_start(message: types.Message, bot: BOT):
         await message.answer("Привет\nЯ бот для созданный для контроля сообщений в группе https://t.me/vapefleaNN\nК сожаления у меня нет никакого функционала для обычных пользователей\nПриношу свои извенения")
 
 @dp.message(Command("tell"))
-async def tell(message: Message, command: CommandObject, bot: BOT):
+async def tell(message: Message, command: CommandObject, bot: _Bot):
     if message.from_user.id:
         if not command.args:
             await message.answer("Пожалуйста, напишите сообщение после команды /tell.")
@@ -92,7 +105,7 @@ async def addAdmin(message: Message):
 
 
 @dp.message(Command("id_group"))
-async def id_group(message: Message, bot: BOT):
+async def id_group(message: Message, bot: _Bot):
     if message.from_user.id:
         chat_id = message.chat.id
         print(f"ID этого чата: {chat_id}")
@@ -162,7 +175,7 @@ async def del_blacklist(message: Message, state: FSMContext):
     await state.clear()
 
 @dp.message()
-async def check_blacklist(message: Message, bot: BOT):
+async def check_blacklist(message: Message, bot: _Bot):
     datetime_date = datetime.datetime.now()
     _date_and_time = datetime_date.strftime("%d-%m-%Y || %H:%M")
     con = sqlite3.connect('blacklist.db')
@@ -207,12 +220,22 @@ async def check_blacklist(message: Message, bot: BOT):
 
 
 async def main():
-    datetime_date = datetime.datetime.now()
-    _date_and_time = datetime_date.strftime("%d-%m-%Y || %H:%M")
-    print(Fore.GREEN + f"{'':->6}Бот запущен в {_date_and_time}{'':->6}", Style.RESET_ALL, '\n')
-    await dp.start_polling(BOT)
+    try:
+        datetime_date = datetime.datetime.now()
+        _date_and_time = datetime_date.strftime("%d-%m-%Y || %H:%M")
+        print(Fore.GREEN + f"\n  {'':->6}Бот запущен в {_date_and_time}{'':->6}", Style.RESET_ALL, '\n')
+        await dp.start_polling(_Bot)
+    except Exception as ex:
+        logging.error(ex)
+    finally:
+        for i in range(3):
+            await _Bot.send_message(text=f"Внимание!!!", chat_id=admins[0])
+            time.sleep(1)
+        await _Bot.send_message(text=f"Бот завершил работу в {_date_and_time.replace("||", ":")}",
+                                chat_id=admins[0]
+                                )
+
 
 if __name__ == "__main__":
-    #logging.basicConfig(level=logging.WARNING, stream=sys.stdout)
     logging.getLogger("aiogram").setLevel(logging.WARNING)  # или logging.ERROR
     asyncio.run(main())
