@@ -7,5 +7,4 @@ cur.execute("""CREATE TABLE IF NOT EXISTS Words(
             Word TEXT NOT NULL,
             reason TEXT
 )""")
-
 con.commit()

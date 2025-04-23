@@ -16,7 +16,6 @@ from aiogram.types import Message
 from aiogram.fsm.state import StatesGroup, State
 from aiogram.fsm.context import FSMContext
 
-
 # Config logging
 logging.basicConfig(level=logging.INFO)
 
@@ -29,17 +28,17 @@ if not os.getenv("TOKEN"):
     set_key('.env', 'TOKEN', token)
     logging.info("Токен был записан в .env файл\nДалее будет перезагрузка")
 
-
 _Bot = Bot(token=os.getenv("TOKEN"))
-
 
 dp = Dispatcher()
 CHAT_ID = -1002038329653
 admins = [2123919405]
 
+
 class AddWordBList(StatesGroup):
     word = State()
     reason = State()
+
 
 class DelWordBList(StatesGroup):
     word = State()
@@ -53,19 +52,21 @@ async def cmd_start(message: types.Message, bot: _Bot):
             chat_id=CHAT_ID,
             text="""Всем привет!
 Я — бот, цель которого следить за соблюдением правил в этой группе.
-    
+
 Правила группы:
 1. Распространение незаконных товаров запрещено.
 2. Реклама без договорённости с администраторами запрещена.
 3. Длительная переписка не по теме группы или попытки увлечь пользователей на сторонние ресурсы запрещены.
-    
+
 Рекомендация:
 1. Обязательно прикрепляйте фото к своему сообщения в противном случае это будет расцениваться как нарушение правил
-    
+
 Желаю приятного опыта использования нашей группой!"""
         )
     else:
-        await message.answer("Привет\nЯ бот для созданный для контроля сообщений в группе https://t.me/vapefleaNN\nК сожаления у меня нет никакого функционала для обычных пользователей\nПриношу свои извенения")
+        await message.answer(
+            "Привет\nЯ бот для созданный для контроля сообщений в группе https://t.me/vapefleaNN\nК сожаления у меня нет никакого функционала для обычных пользователей\nПриношу свои извенения")
+
 
 @dp.message(Command("tell"))
 async def tell(message: Message, command: CommandObject, bot: _Bot):
@@ -116,6 +117,7 @@ async def id_group(message: Message, bot: _Bot):
         else:
             print("Операция отменена!")
 
+
 @dp.message(Command('add_blacklist'))
 async def add_blacklist(message: Message, state: FSMContext):
     if message.from_user.id in admins:
@@ -124,7 +126,6 @@ async def add_blacklist(message: Message, state: FSMContext):
     else:
         await state.clear()
         print(Fore.RED + f"{'':!>3}{'':->3} Попытка использования прав админа {'':->3}{'':!>3}", Style.RESET_ALL)
-
 
 
 @dp.message(AddWordBList.word)
@@ -140,6 +141,7 @@ async def add_blacklist(message: Message, state: FSMContext):
         await message.answer("Теперь введите причину запрета этого слова")
         await state.set_state(AddWordBList.reason)
 
+
 @dp.message(AddWordBList.reason)
 async def add_blacklist_two(message: Message, state: FSMContext):
     data = await state.get_data()
@@ -153,6 +155,7 @@ async def add_blacklist_two(message: Message, state: FSMContext):
     con.close()
     await state.clear()
 
+
 @dp.message(Command('del_blacklist'))
 async def del_blacklist(message: Message, state: FSMContext):
     if message.from_user.id in admins:
@@ -161,6 +164,7 @@ async def del_blacklist(message: Message, state: FSMContext):
     else:
         await state.clear()
         print(Fore.RED + f"{'':!>3}{'':->3} Попытка использования прав админа {'':->3}{'':!>3}", Style.RESET_ALL)
+
 
 @dp.message(DelWordBList.word)
 async def del_blacklist(message: Message, state: FSMContext):
@@ -173,6 +177,7 @@ async def del_blacklist(message: Message, state: FSMContext):
     con.close()
     await message.reply(f'Слово {message.text} удалено из черного списка')
     await state.clear()
+
 
 @dp.message()
 async def check_blacklist(message: Message, bot: _Bot):
@@ -196,13 +201,15 @@ async def check_blacklist(message: Message, bot: _Bot):
                         reason = cursor.execute("SELECT Word, reason FROM Words WHERE Word = ?", (i,)).fetchone()
                         await bot.send_message(
                             chat_id=message.from_user.id,
-                            text="В вашем сообщение было обнаружено нарушение правил группы\nЗафиксированное нарушение:\n" + reason[0],
+                            text="В вашем сообщение было обнаружено нарушение правил группы\nЗафиксированное нарушение:\n" +
+                                 reason[0],
                         )
                         break
                     print(Fore.GREEN + f"Совпадений не найдено в цикле: {i}", Style.RESET_ALL, '\n\n')
                     pass
         else:
-            print(Fore.RED + f"Фото не прикреплено\nСообщение автоматически удаляется\nТекст сообщения:", Style.RESET_ALL + message.text,
+            print(Fore.RED + f"Фото не прикреплено\nСообщение автоматически удаляется\nТекст сообщения:",
+                  Style.RESET_ALL + message.text,
                   '\n\n')
             await bot.delete_message(chat_id=message.chat.id, message_id=message.message_id)
             try:
@@ -216,7 +223,6 @@ async def check_blacklist(message: Message, bot: _Bot):
     else:
         print(Fore.GREEN + f"{'':*>3}Получено сообщение от админа!{'':*>3}", Style.RESET_ALL, '\n\n')
     con.close()
-
 
 
 async def main():
